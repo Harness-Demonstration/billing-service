@@ -1,11 +1,15 @@
 package com.harnesslab.billing.stream;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.harnesslab.billing.service.ChargeEventPublisher;
 import com.harnesslab.billing.types.OutboxEvent;
 import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
 import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.propagation.Propagator;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -15,11 +19,20 @@ import org.springframework.stereotype.Component;
 public class KafkaChargeEventPublisher implements ChargeEventPublisher {
 
     private final KafkaTemplate<byte[], byte[]> kafkaTemplate;
+    private final ObjectMapper objectMapper;
     private final Tracer tracer;
+    private final Propagator propagator;
 
-    public KafkaChargeEventPublisher(KafkaTemplate<byte[], byte[]> kafkaTemplate, ObjectProvider<Tracer> tracer) {
+    /** Without tracing (for example in tests) there is no Propagator bean; Propagator.NOOP reads no headers. */
+    public KafkaChargeEventPublisher(
+            KafkaTemplate<byte[], byte[]> kafkaTemplate,
+            ObjectMapper objectMapper,
+            Tracer tracer,
+            ObjectProvider<Propagator> propagator) {
         this.kafkaTemplate = kafkaTemplate;
-        this.tracer = tracer.getIfAvailable(() -> Tracer.NOOP);
+        this.objectMapper = objectMapper;
+        this.tracer = tracer;
+        this.propagator = propagator.getIfAvailable(() -> Propagator.NOOP);
     }
 
     /**
@@ -28,17 +41,26 @@ public class KafkaChargeEventPublisher implements ChargeEventPublisher {
      */
     @Override
     public CompletableFuture<Void> publish(OutboxEvent event) {
-        String[] parts = event.traceParent() == null ? new String[0] : event.traceParent().split("-");
-        if (parts.length != 4) {
+        Map<String, String> headers = traceHeaders(event);
+        if (headers.isEmpty()) {
             return send(event);
         }
-        TraceContext parent = tracer.traceContextBuilder()
-                .traceId(parts[1]).spanId(parts[2]).sampled("01".equals(parts[3])).build();
-        Span span = tracer.spanBuilder().setParent(parent).name("outbox relay " + event.topic()).start();
+        Span span = propagator.extract(headers, Map::get).name("outbox relay " + event.topic()).start();
         try (Tracer.SpanInScope scope = tracer.withSpan(span)) {
             return send(event);
         } finally {
             span.end();
+        }
+    }
+
+    private Map<String, String> traceHeaders(OutboxEvent event) {
+        if (event.traceContext() == null) {
+            return Map.of();
+        }
+        try {
+            return objectMapper.readValue(event.traceContext(), new TypeReference<Map<String, String>>() {});
+        } catch (JsonProcessingException exception) {
+            return Map.of();
         }
     }
 

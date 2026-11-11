@@ -5,10 +5,10 @@ import java.util.UUID;
 
 /**
  * An event waiting in, or already sent from, the outbox. sentAt is null until Kafka acknowledged it.
- * traceParent is the W3C traceparent of the span that wrote the row, or null; the relay continues that trace.
+ * traceContext holds the trace headers of the span that wrote the row as JSON, or null; the relay continues that trace.
  */
 public record OutboxEvent(
-        UUID id, String aggregateId, String topic, String payload, Instant createdAt, Instant sentAt, String traceParent) {
+        UUID id, String aggregateId, String topic, String payload, Instant createdAt, Instant sentAt, String traceContext) {
 
     public OutboxEvent(UUID id, String aggregateId, String topic, String payload, Instant createdAt, Instant sentAt) {
         this(id, aggregateId, topic, payload, createdAt, sentAt, null);

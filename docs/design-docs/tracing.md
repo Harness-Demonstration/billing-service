@@ -6,8 +6,8 @@ A trace starts in sim-service (for example at the REST activation) and reaches b
 ## Decision
 1. Micrometer Tracing with the OpenTelemetry bridge, exported over OTLP to Jaeger (`management.otlp.tracing.endpoint`; Jaeger runs from sim-service's `infra/docker-compose.yml`). Every request is sampled in this lab.
 2. `spring.kafka.template.observation-enabled` and `spring.kafka.listener.observation-enabled` are on, so the listener continues the trace from the incoming `traceparent` and the template writes one on outgoing messages.
-3. When an outbox row is written, `PostgresOutboxRepository` stores the current span as `traceparent` in `outbox.trace_parent` (migration V2).
-4. `KafkaChargeEventPublisher` opens a span `outbox relay <topic>` whose parent is that stored context, and sends inside it.
+3. When an outbox row is written, `PostgresOutboxRepository` asks Micrometer's `Propagator` to inject the current span into a map (W3C `traceparent`, plus `tracestate` and baggage when present) and stores it as JSON in `outbox.trace_context` (migration V2).
+4. `KafkaChargeEventPublisher` reads those headers back with `Propagator.extract`, opens a span `outbox relay <topic>` with that parent, and sends inside it.
 5. Observations of `@Scheduled` runs are switched off (`ObservationConfiguration`); the relay runs every second.
 
 Proven by `TracingKafkaTest`: a `sim.activated` with a given trace id produces a `billing.charge.requested` with the same trace id.
