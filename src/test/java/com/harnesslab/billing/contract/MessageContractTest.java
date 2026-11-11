@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -80,6 +81,12 @@ class MessageContractTest {
 
         assertEquals(new SimDeactivated(EVENT_ID, ICCID, MSISDN, Instant.parse("2026-01-02T03:04:05Z")),
                 new SimEventReader(objectMapper).deactivated(json.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    void sim_service_still_publishes_the_topics_billing_listens_to() throws Exception {
+        assertPublished(SimActivated.TOPIC, "SimActivated");
+        assertPublished(SimDeactivated.TOPIC, "SimDeactivated");
     }
 
     @Test
@@ -144,11 +151,39 @@ class MessageContractTest {
         }
     }
 
-    private static JsonNode payload(Path contract, String message) throws Exception {
+    private static void assertPublished(String topic, String message) throws Exception {
+        JsonNode contract = contract(SIM_CONTRACT);
+        String channel = null;
+        for (Map.Entry<String, JsonNode> entry : contract.path("channels").properties()) {
+            if (topic.equals(entry.getValue().path("address").asText())) {
+                channel = entry.getKey();
+            }
+        }
+        assertTrue(channel != null, () -> "billing listens to " + topic + " but sim-service has no channel with that address."
+                + FIX);
+        String messageRef = "#/components/messages/" + message;
+        boolean carriesMessage = false;
+        for (JsonNode ref : contract.path("channels").path(channel).path("messages")) {
+            carriesMessage |= messageRef.equals(ref.path("$ref").asText());
+        }
+        assertTrue(carriesMessage, () -> topic + " no longer carries " + message + " in sim-service's contract." + FIX);
+        String channelRef = "#/channels/" + channel;
+        boolean sent = false;
+        for (JsonNode operation : contract.path("operations")) {
+            sent |= "send".equals(operation.path("action").asText())
+                    && channelRef.equals(operation.path("channel").path("$ref").asText());
+        }
+        assertTrue(sent, () -> "sim-service no longer has a send operation for " + topic + "." + FIX);
+    }
+
+    private static JsonNode contract(Path contract) throws Exception {
         assertTrue(Files.exists(contract), () -> contract.toAbsolutePath() + " not found. FIX: clone sim-service next to "
                 + "billing-service or set SIM_EVENTS_CONTRACT to its docs/contracts/sim-events.asyncapi.yaml.");
-        return new ObjectMapper(new YAMLFactory()).readTree(Files.readString(contract))
-                .at("/components/messages/" + message + "/payload");
+        return new ObjectMapper(new YAMLFactory()).readTree(Files.readString(contract));
+    }
+
+    private static JsonNode payload(Path contract, String message) throws Exception {
+        return contract(contract).at("/components/messages/" + message + "/payload");
     }
 
     private static JsonSchema schema(Path contract, String message) throws Exception {
