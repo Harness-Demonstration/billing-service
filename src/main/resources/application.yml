@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: billing-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/billing}
+    username: ${SPRING_DATASOURCE_USERNAME:billing}
+    password: ${SPRING_DATASOURCE_PASSWORD:billing}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+    consumer:
+      group-id: billing-service
+      key-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+server:
+  port: 8081
+billing:
+  activation-fee:
+    amount-minor: 1000
+    currency: EUR

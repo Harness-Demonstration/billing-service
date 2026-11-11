@@ -1,0 +1,36 @@
+asyncapi: 3.1.0
+info:
+  title: billing-service events
+  version: 1.0.0
+  description: >
+    Messages billing-service publishes. Change this file before the Java code.
+    The messages it reads (sim.activated, sim.deactivated) are owned by sim-service and defined in
+    sim-service/docs/contracts/sim-events.asyncapi.yaml.
+channels:
+  billingChargeRequested:
+    address: billing.charge.requested
+    messages:
+      ChargeRequested:
+        $ref: '#/components/messages/ChargeRequested'
+operations:
+  publishChargeRequested:
+    action: send
+    channel:
+      $ref: '#/channels/billingChargeRequested'
+components:
+  messages:
+    ChargeRequested:
+      description: Key is the ICCID. Delivery is at least once; eventId is the same on a redelivery.
+      payload:
+        type: object
+        additionalProperties: false
+        required: [eventId, chargeId, iccid, msisdn, amountMinor, currency, reason, requestedAt]
+        properties:
+          eventId: {type: string, format: uuid, description: Same value on a redelivery; consumers drop duplicates by it.}
+          chargeId: {type: string, format: uuid}
+          iccid: {type: string}
+          msisdn: {type: string}
+          amountMinor: {type: integer, minimum: 0, description: Amount in minor units, for example cents.}
+          currency: {type: string, pattern: '^[A-Z]{3}$'}
+          reason: {type: string, enum: [ACTIVATION_FEE]}
+          requestedAt: {type: string, format: date-time}
