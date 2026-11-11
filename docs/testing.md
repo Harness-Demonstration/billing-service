@@ -11,6 +11,7 @@
 | Unit | plain JUnit, fakes declared inside the test class, fixed `Clock` | business rules in `service` |
 | Kafka integration | real PostgreSQL and Kafka from Testcontainers | consumers, the relay, the dead-letter topic |
 | Contract | JSON Schema from both AsyncAPI files, `MessageContractTest` | every message billing reads or sends |
+| Tracing | Testcontainers, `@AutoConfigureObservability`, `traceparent` headers | trace propagation through the outbox |
 | Architecture | ArchUnit in `LayerRulesTest` | every build |
 
 ## The sim-service contract

@@ -57,6 +57,10 @@ billing reads messages it does not own. `MessageContractTest` validates billing'
 
 A malformed message goes unchanged to `<topic>.billing-dlt` once and is never retried. Any other failure (database or Kafka unavailable) is retried every second, so no event is skipped.
 
+### Observability
+
+Micrometer Tracing with OpenTelemetry, exported to Jaeger. The listener continues the trace from `sim.activated`; the outbox row stores it and the relay continues it on `billing.charge.requested` (see `docs/design-docs/tracing.md`).
+
 ### Configuration
 
 Database and Kafka addresses come from environment variables with local defaults (`application.yml`). The relay can be switched off with `billing.outbox.relay.enabled=false`.
