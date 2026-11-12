@@ -1,0 +1,36 @@
+name: Agent loop
+
+# Moves agent work forward: agent-ready issue -> Copilot writes a PR -> Copilot reviews -> fix rounds -> a human.
+# The logic lives in the harness repository; this file only chooses the triggers and the settings.
+# Only triggers that run this file from the default branch are used, and nothing checks out pull request
+# code, so a pull request cannot change what runs with AGENT_LOOP_TOKEN.
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_run:
+    workflows: ["Copilot cloud agent", "Copilot"]
+    types: [completed]
+  pull_request_target:
+    types: [review_requested]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to move forward
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-loop-${{ github.event.issue.number || github.event.pull_request.number || github.event.workflow_run.head_branch || inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    uses: Harness-Demonstration/harness/.github/workflows/agent-loop.yml@main
+    with:
+      human-reviewer: rsercano
+      verify-command: ./mvnw -q verify and scripts/check-docs.sh
+      max-fix-rounds: ${{ vars.AGENT_MAX_FIX_ROUNDS || '1' }}
+      pr: ${{ inputs.pr }}

@@ -21,6 +21,7 @@ Stack: Java 17, Spring Boot 3.3, Spring Data JPA, Flyway, PostgreSQL 16, Spring 
 | Shape of `billing.charge.requested` | `docs/contracts/billing-events.asyncapi.yaml` |
 | Shape of `sim.activated` and `sim.deactivated` | `../sim-service/docs/contracts/sim-events.asyncapi.yaml` (sim-service cloned next to this repository) |
 | How a trace continues through the outbox and Kafka | `docs/design-docs/tracing.md` |
+| How issues reach you and how reviews come back | https://github.com/Harness-Demonstration/harness/blob/main/docs/agent-loop.md |
 | Local PostgreSQL for billing | `infra/docker-compose.yml` |
 
 ## How to work
