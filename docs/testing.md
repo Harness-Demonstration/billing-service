@@ -15,7 +15,7 @@
 | Architecture | ArchUnit in `LayerRulesTest` | every build |
 
 ## The sim-service contract
-`MessageContractTest` reads sim-service's `docs/contracts/sim-events.asyncapi.yaml` from `SIM_EVENTS_CONTRACT`, or from `../sim-service` when the variable is not set. CI and the Copilot setup steps clone sim-service there. If the test fails with "sim-service changed", update billing to the new shape; never edit sim-service's contract from here.
+`MessageContractTest` reads sim-service's `docs/contracts/sim-events.asyncapi.yaml` from `SIM_EVENTS_CONTRACT`, or from `../sim-service` when the variable is not set. CI and the Copilot setup steps clone sim-service there. If the test fails with "sim-service changed", update billing to the new shape; never edit sim-service's contract from here. sim-service's CI runs this same test against every sim-service pull request, so a change that breaks billing fails there before it merges. Keep the test free of Docker and Spring context so that run stays fast.
 
 ## Testcontainers
 - The version comes from the `testcontainers.version` property in `pom.xml`. Never write a version on the individual dependencies.
